@@ -166,7 +166,7 @@ fail:
 static bool rgb_buf_fits(size_t count, size_t unit_size, size_t buf_size)
 {
     if(count > buf_size / unit_size) {
-        ESP_LOGE(TAG, "RGB888 buffer too small (%u bytes)", (unsigned)buf_size);
+        ESP_LOGE(TAG, "Output buffer too small (%u bytes)", (unsigned)buf_size);
         return false;
     }
     return true;

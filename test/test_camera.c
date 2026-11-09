@@ -552,7 +552,43 @@ TEST_CASE("Conversions bounded jpeg decode respects output size", "[camera]")
     TEST_ASSERT_TRUE(fmt2rgb888_bounded(img_start, img_len, PIXFORMAT_JPEG, buf, rgb888_len));
     TEST_ASSERT_EQUAL_UINT8(0xA5, buf[rgb888_len]);
 
+    // Scale 1/2: the output is (w / 2) * (h / 2) * 2 bytes, 113 * 74 * 2 for this image
+    const size_t rgb565_half_len = (227 / 2) * (149 / 2) * 2;
+    memset(buf, 0xA5, buf_len);
+    TEST_ASSERT_FALSE(jpg2rgb565_bounded(img_start, img_len, buf, rgb565_half_len - 1, JPEG_IMAGE_SCALE_1_2));
+    TEST_ASSERT_EACH_EQUAL_UINT8(0xA5, buf, buf_len);
+    TEST_ASSERT_TRUE(jpg2rgb565_bounded(img_start, img_len, buf, rgb565_half_len, JPEG_IMAGE_SCALE_1_2));
+    TEST_ASSERT_EACH_EQUAL_UINT8(0xA5, buf + rgb565_half_len, buf_len - rgb565_half_len);
+
     heap_caps_free(buf);
+}
+
+TEST_CASE("Conversions bounded fmt2rgb888 respects output size for raw formats", "[camera]")
+{
+    // Four pixels in each source format; every one converts to 12 bytes of RGB888
+    const struct {
+        pixformat_t format;
+        size_t src_len;
+    } cases[] = {
+        {PIXFORMAT_RGB888, 12},
+        {PIXFORMAT_RGB565, 8},
+        {PIXFORMAT_GRAYSCALE, 4},
+        {PIXFORMAT_YUV422, 8},
+    };
+    const uint8_t src[12] = {0};
+    const size_t rgb_len = 4 * 3;
+    uint8_t buf[4 * 3 + 1];
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        // One byte short: rejected before anything is written
+        memset(buf, 0xA5, sizeof(buf));
+        TEST_ASSERT_FALSE(fmt2rgb888_bounded(src, cases[i].src_len, cases[i].format, buf, rgb_len - 1));
+        TEST_ASSERT_EACH_EQUAL_UINT8(0xA5, buf, sizeof(buf));
+
+        // Exact size: converts without writing past the end
+        TEST_ASSERT_TRUE(fmt2rgb888_bounded(src, cases[i].src_len, cases[i].format, buf, rgb_len));
+        TEST_ASSERT_EQUAL_UINT8(0xA5, buf[rgb_len]);
+    }
 }
 
 TEST_CASE("Camera driver uses an i2c port initialized by other devices test", "[camera]")
